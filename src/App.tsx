@@ -1,23 +1,74 @@
 import React from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import HomePage from "./pages/homepage";
 import ChatPage from "./pages/chat";
 import AcademicWarning from "./pages/AcademicWarning";
 import { BubbleChat } from "flowise-embed-react";
 import "./App.css";
+import { ThemeProvider, createTheme } from '@mui/material';
+import LoginPage from './pages/loginpage';
+import AdminDashboard from './pages/admin/Dashboard';
+import AdvisorDashboard from './pages/advisor/Dashboard';
+import StudentDashboard from './pages/student/Dashboard';
+import { AuthProvider, useAuth } from './context/AuthContext';
+
+const theme = createTheme({
+  // Thêm cấu hình theme ở đây
+});
+
+const PrivateRoute = ({ children, role }: { children: React.ReactNode; role: string }) => {
+  const { user } = useAuth();
+  
+  if (!user) {
+    return <Navigate to="/login" />;
+  }
+
+  if (user.role !== role) {
+    return <Navigate to="/" />;
+  }
+
+  return <>{children}</>;
+};
 
 function App() {
   return (
-    <div className="app-container w-full h-full overflow-hidden">
-      <Router>
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/chat" element={<ChatPage />} />
-          <Route path="/academic-warning" element={<AcademicWarning />} />
-
-          {/* Thêm các route khác ở đây */}
-        </Routes>
-      </Router>
+    <ThemeProvider theme={theme}>
+      <AuthProvider>
+        <Router>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            
+            <Route
+              path="/admin/*"
+              element={
+                <PrivateRoute role="admin">
+                  <AdminDashboard />
+                </PrivateRoute>
+              }
+            />
+            
+            <Route
+              path="/advisor/*"
+              element={
+                <PrivateRoute role="advisor">
+                  <AdvisorDashboard />
+                </PrivateRoute>
+              }
+            />
+            
+            <Route
+              path="/student/*"
+              element={
+                <PrivateRoute role="student">
+                  <StudentDashboard />
+                </PrivateRoute>
+              }
+            />
+            
+            <Route path="/" element={<Navigate to="/login" />} />
+          </Routes>
+        </Router>
+      </AuthProvider>
 
       {/* Sử dụng BubbleChat từ flowise-embed-react */}
       <BubbleChat
@@ -62,7 +113,7 @@ function App() {
           },
         }}
       />
-    </div>
+    </ThemeProvider>
   );
 }
 
