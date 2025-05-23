@@ -1,14 +1,26 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 const LoginPage: React.FC = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [role, setRole] = useState("student");
+  const navigate = useNavigate();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     // Xử lý logic đăng nhập ở đây
-    console.log("Đăng nhập với:", { username, password });
+    console.log("Đăng nhập với:", { username, password, role });
+    
+    // Chuyển hướng dựa vào vai trò
+    if (role === "admin") {
+      navigate("/admin");
+    } else if (role === "advisor") {
+      navigate("/advisor");
+    } else {
+      navigate("/student");
+    }
   };
 
   return (
@@ -218,6 +230,8 @@ const LoginPage: React.FC = () => {
                   </div>
                 </div>
 
+               
+
                 {/* Quên mật khẩu và Trợ giúp */}
                 <div className="flex justify-between mb-6 md:mb-8 text-xs md:text-sm">
                   <a href="#" className="text-indigo-900 hover:underline">
@@ -255,27 +269,24 @@ const LoginPage: React.FC = () => {
                         strokeLinejoin="round"
                       />
                     </svg>
-                    Trợ giúp!
+                    Trợ giúp
                   </a>
                 </div>
 
                 {/* Nút đăng nhập */}
                 <button
                   type="submit"
-                  className="w-full bg-indigo-900 hover:bg-indigo-800 text-white font-bold py-2.5 md:py-3 px-4 rounded-lg transition duration-200 text-sm md:text-base"
+                  className={`w-full ${
+                    role === "admin" 
+                      ? "bg-blue-600 hover:bg-blue-700" 
+                      : role === "advisor" 
+                      ? "bg-green-600 hover:bg-green-700" 
+                      : "bg-indigo-600 hover:bg-indigo-700"
+                  } text-white font-medium rounded-lg text-sm md:text-base px-5 py-2.5 md:py-3 text-center transition-colors`}
                 >
                   ĐĂNG NHẬP
                 </button>
               </form>
-
-              {/* Hoặc đăng nhập */}
-              <div className="mt-6 flex items-center">
-                <div className="flex-grow h-px bg-gray-300"></div>
-                <span className="px-3 md:px-4 text-gray-500 text-xs md:text-sm">
-                  Hoặc đăng nhập
-                </span>
-                <div className="flex-grow h-px bg-gray-300"></div>
-              </div>
             </div>
           </div>
         </div>
