@@ -24,7 +24,7 @@ const AdvisorPage: React.FC = () => {
           <MenuCard
             icon={<FaComments className="w-16 h-16 text-indigo-600" />}
             title="Tư vấn trực tuyến"
-            link="/chat"
+            link="/advisor-chat"
           />
           
           <MenuCard

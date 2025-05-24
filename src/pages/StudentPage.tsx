@@ -30,7 +30,7 @@ const StudentPage: React.FC = () => {
           <MenuCard
             icon={<FaComments className="w-16 h-16 text-indigo-600" />}
             title="Tư vấn với CVHT"
-            link="/chat"
+            link="/advisor-chat"
           />
           
           <MenuCard

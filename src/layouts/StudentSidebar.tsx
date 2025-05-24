@@ -11,6 +11,7 @@ import {
   FaBars,
   FaChevronDown,
   FaChevronRight,
+  FaCommentDots,
 } from "react-icons/fa";
 import { Link } from "react-router-dom";
 
@@ -169,11 +170,11 @@ const StudentSidebar: React.FC<SidebarProps> = ({ sidebarOpen, toggleSidebar }) 
             to="/student/schedule"
           />
           <MenuItem
-            icon={<FaComments />}
-            text="Tư vấn với CVHT"
+            icon={<FaCommentDots />}
+            text="Nhắn tin với cố vấn"
             active={false}
             sidebarOpen={sidebarOpen}
-            to="/chat"
+            to="/advisor-chat"
           />
           <MenuItem
             icon={<FaMoneyBillWave />}

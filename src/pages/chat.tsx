@@ -1,167 +1,99 @@
-import React, { useState } from "react";
+import React, { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import MainLayout from "../layouts/MainLayout";
-import { FaPaperPlane, FaImage, FaFile, FaSmile } from "react-icons/fa";
-
-interface Message {
-  id: number;
-  sender: "student" | "teacher";
-  content: string;
-  timestamp: string;
-}
+import AdvisorLayout from "../layouts/AdvisorLayout";
+import StudentLayout from "../layouts/StudentLayout";
+import { useAuth } from "../services/AuthContext";
+import { FaComments, FaUserFriends, FaPlus, FaRocket, FaUserTie } from "react-icons/fa";
 
 const ChatPage: React.FC = () => {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: 1,
-      sender: "student",
-      content: "Chào thầy, em có thắc mắc về bài tập tuần trước ạ",
-      timestamp: "10:30 AM",
-    },
-    {
-      id: 2,
-      sender: "teacher",
-      content: "Chào em, thầy đang rảnh, em cứ hỏi nhé",
-      timestamp: "10:31 AM",
-    },
-  ]);
+  const { user: currentUser } = useAuth();
+  const navigate = useNavigate();
 
-  const [newMessage, setNewMessage] = useState("");
+  // Tự động chuyển hướng đến trang chat giữa sinh viên và cố vấn
+  useEffect(() => {
+    // Tự động chuyển hướng sau 5 giây nếu không có tương tác
+    const timer = setTimeout(() => {
+      navigate("/advisor-chat");
+    }, 5000);
 
-  const handleSendMessage = () => {
-    if (newMessage.trim()) {
-      const message: Message = {
-        id: messages.length + 1,
-        sender: "student",
-        content: newMessage,
-        timestamp: new Date().toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-      };
-      setMessages([...messages, message]);
-      setNewMessage("");
-    }
+    return () => clearTimeout(timer);
+  }, [navigate]);
+
+  const handleGoToChat = () => {
+    navigate("/advisor-chat");
   };
 
+  const handleNewChat = () => {
+    navigate("/new-chat");
+  };
+  
+  const handleCreateSimpleChat = () => {
+    navigate("/create-chat");
+  };
+  
+  const handleStudentCreateChat = () => {
+    navigate("/student-create-chat");
+  };
+
+  // Sử dụng layout phù hợp với vai trò người dùng
+  const Layout = currentUser?.role === "advisor" ? AdvisorLayout : 
+               currentUser?.role === "student" ? StudentLayout : MainLayout;
+
   return (
-    <MainLayout>
-      <div className="flex h-full w-full">
-        {/* Danh sách người dùng */}
-        <div className="w-1/4 bg-white border-r border-gray-200 h-full">
-          <div className="p-4 border-b border-gray-200">
-            <input
-              type="text"
-              placeholder="Tìm kiếm..."
-              className="w-full px-4 py-2 border rounded-full bg-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-          </div>
-          <div
-            className="overflow-y-auto"
-            style={{ height: "calc(100% - 72px)" }}
-          >
-            {/* Danh sách giảng viên */}
-            <div className="p-4 hover:bg-gray-100 cursor-pointer border-b border-gray-200">
-              <div className="flex items-center">
-                <div className="w-12 h-12 bg-indigo-600 rounded-full flex items-center justify-center text-white font-semibold">
-                  TH
-                </div>
-                <div className="ml-4">
-                  <div className="font-semibold">TS. Trần Hưng</div>
-                  <div className="text-sm text-gray-500">Khoa CNTT</div>
-                </div>
-              </div>
-            </div>
-            <div className="p-4 hover:bg-gray-100 cursor-pointer border-b border-gray-200">
-              <div className="flex items-center">
-                <div className="w-12 h-12 bg-green-600 rounded-full flex items-center justify-center text-white font-semibold">
-                  NT
-                </div>
-                <div className="ml-4">
-                  <div className="font-semibold">ThS. Nguyễn Thành</div>
-                  <div className="text-sm text-gray-500">Khoa CNTT</div>
-                </div>
-              </div>
-            </div>
-          </div>
+    <Layout>
+      <div className="h-full flex flex-col items-center justify-center">
+        <div className="text-center max-w-md mx-auto p-8 bg-white rounded-lg shadow-md">
+          <div className="text-6xl text-indigo-600 mb-4 flex justify-center">
+            <FaComments />
         </div>
-
-        {/* Khu vực chat */}
-        <div className="flex-1 flex flex-col bg-gray-50 h-full">
-          {/* Header chat */}
-          <div className="p-4 bg-white border-b border-gray-200">
-            <div className="flex items-center">
-              <div className="w-10 h-10 bg-indigo-600 rounded-full flex items-center justify-center text-white font-semibold">
-                TH
-              </div>
-              <div className="ml-4">
-                <div className="font-semibold">TS. Trần Hưng</div>
-                <div className="text-sm text-green-500">Đang hoạt động</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Khu vực tin nhắn */}
-          <div className="flex-1 overflow-y-auto p-4">
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={`flex ${
-                  message.sender === "student" ? "justify-end" : "justify-start"
-                } mb-4`}
-              >
-                <div
-                  className={`max-w-[70%] rounded-lg p-3 ${
-                    message.sender === "student"
-                      ? "bg-indigo-600 text-white"
-                      : "bg-white border border-gray-200"
-                  }`}
-                >
-                  <div className="text-sm">{message.content}</div>
-                  <div
-                    className={`text-xs mt-1 ${
-                      message.sender === "student"
-                        ? "text-indigo-200"
-                        : "text-gray-500"
-                    }`}
-                  >
-                    {message.timestamp}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Thanh nhập tin nhắn */}
-          <div className="p-4 bg-white border-t border-gray-200">
-            <div className="flex items-center">
-              <button className="p-2 hover:bg-gray-100 rounded-full">
-                <FaSmile className="text-gray-500 text-xl" />
-              </button>
-              <button className="p-2 hover:bg-gray-100 rounded-full">
-                <FaImage className="text-gray-500 text-xl" />
-              </button>
-              <button className="p-2 hover:bg-gray-100 rounded-full">
-                <FaFile className="text-gray-500 text-xl" />
-              </button>
-              <input
-                type="text"
-                value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-                onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
-                placeholder="Nhập tin nhắn..."
-                className="flex-1 mx-4 px-4 py-2 border rounded-full focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
+          <h1 className="text-2xl font-bold mb-4">Hệ thống nhắn tin mới</h1>
+          <p className="text-gray-600 mb-6">
+            Chúng tôi đã nâng cấp hệ thống nhắn tin. Giờ đây bạn có thể trò chuyện trực tiếp với 
+            {currentUser?.role === "student" ? " giảng viên" : " sinh viên"} của mình.
+          </p>
+          <div className="flex flex-col gap-3">
+            <button
+              onClick={handleGoToChat}
+              className="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 flex items-center justify-center"
+            >
+              <FaUserFriends className="mr-2" />
+              Xem cuộc trò chuyện
+            </button>
+            
+            <button
+              onClick={handleCreateSimpleChat}
+              className="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 flex items-center justify-center"
+            >
+              <FaRocket className="mr-2" />
+              Tạo chat nhanh
+            </button>
+            
+            {currentUser?.role === "student" && (
               <button
-                onClick={handleSendMessage}
-                className="p-2 bg-indigo-600 hover:bg-indigo-700 rounded-full text-white"
+                onClick={handleStudentCreateChat}
+                className="w-full bg-purple-600 text-white py-2 px-4 rounded-md hover:bg-purple-700 flex items-center justify-center"
               >
-                <FaPaperPlane />
+                <FaUserTie className="mr-2" />
+                Nhắn tin với giảng viên
               </button>
-            </div>
+            )}
+            
+                <button
+              onClick={handleNewChat}
+              className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 flex items-center justify-center"
+            >
+              <FaPlus className="mr-2" />
+              Tạo cuộc trò chuyện (nâng cao)
+                </button>
           </div>
+          
+          <p className="text-sm text-gray-500 mt-4">
+            Đang chuyển hướng tự động đến hệ thống nhắn tin mới...
+          </p>
         </div>
       </div>
-    </MainLayout>
+    </Layout>
   );
 };
 
