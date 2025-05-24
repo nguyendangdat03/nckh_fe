@@ -1,25 +1,72 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useAuth } from "../services/AuthContext";
 import { useNavigate } from "react-router-dom";
 
 const LoginPage: React.FC = () => {
-  const [username, setUsername] = useState("");
+  const [studentCode, setStudentCode] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [role, setRole] = useState("student");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const { login, user } = useAuth();
   const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Nếu người dùng đã đăng nhập, chuyển hướng đến trang tương ứng
+  useEffect(() => {
+    if (user) {
+      console.log("Người dùng đã đăng nhập, chuyển hướng:", user);
+      if (user.role === 'admin') {
+        navigate('/admin');
+      } else if (user.role === 'advisor') {
+        navigate('/advisor');
+      } else if (user.role === 'student') {
+        navigate('/student');
+      } else {
+        navigate('/home');
+      }
+    }
+  }, [user, navigate]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Xử lý logic đăng nhập ở đây
-    console.log("Đăng nhập với:", { username, password, role });
     
-    // Chuyển hướng dựa vào vai trò
-    if (role === "admin") {
-      navigate("/admin");
-    } else if (role === "advisor") {
-      navigate("/advisor");
-    } else {
-      navigate("/student");
+    if (!studentCode || !password) {
+      setErrorMessage("Vui lòng nhập đầy đủ thông tin");
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      setErrorMessage("");
+      console.log("Đang gửi yêu cầu đăng nhập với mã:", studentCode);
+      await login({ student_code: studentCode, password });
+    } catch (error: any) {
+      console.error("Lỗi đăng nhập trong trang Login:", error);
+      
+      // Xử lý các loại lỗi khác nhau
+      if (error.response) {
+        // Lỗi từ API
+        const status = error.response.status;
+        const data = error.response.data;
+        
+        if (status === 401) {
+          setErrorMessage(data?.message || "Thông tin đăng nhập không chính xác");
+        } else if (status === 400) {
+          setErrorMessage(data?.message || "Dữ liệu không hợp lệ");
+        } else if (status === 500) {
+          setErrorMessage("Lỗi máy chủ, vui lòng thử lại sau");
+        } else {
+          setErrorMessage(data?.message || "Đăng nhập không thành công");
+        }
+      } else if (error.request) {
+        // Không nhận được phản hồi từ server
+        setErrorMessage("Không thể kết nối đến máy chủ, vui lòng kiểm tra kết nối mạng");
+      } else {
+        // Lỗi khác
+        setErrorMessage(error.message || "Đăng nhập không thành công. Vui lòng thử lại.");
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -89,7 +136,7 @@ const LoginPage: React.FC = () => {
 
               {/* Form */}
               <form onSubmit={handleSubmit}>
-                {/* Input tài khoản */}
+                {/* Input mã sinh viên */}
                 <div className="mb-4 relative">
                   <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                     <svg
@@ -117,9 +164,10 @@ const LoginPage: React.FC = () => {
                   <input
                     type="text"
                     className="bg-gray-100 border border-gray-300 text-gray-700 text-sm md:text-base rounded-lg block w-full pl-10 p-2.5 md:p-3"
-                    placeholder="Nhập tài khoản hoặc email"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
+                    placeholder="Nhập mã sinh viên"
+                    value={studentCode}
+                    onChange={(e) => setStudentCode(e.target.value)}
+                    disabled={isSubmitting}
                     required
                   />
                 </div>
@@ -162,6 +210,7 @@ const LoginPage: React.FC = () => {
                     placeholder="Nhập mật khẩu"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
+                    disabled={isSubmitting}
                     required
                   />
                   <div
@@ -230,7 +279,17 @@ const LoginPage: React.FC = () => {
                   </div>
                 </div>
 
-               
+                {/* Hiển thị lỗi */}
+                {errorMessage && (
+                  <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm">
+                    <div className="flex items-center">
+                      <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                      {errorMessage}
+                    </div>
+                  </div>
+                )}
 
                 {/* Quên mật khẩu và Trợ giúp */}
                 <div className="flex justify-between mb-6 md:mb-8 text-xs md:text-sm">
@@ -239,36 +298,8 @@ const LoginPage: React.FC = () => {
                   </a>
                   <a
                     href="#"
-                    className="text-indigo-900 hover:underline flex items-center"
+                    className="text-indigo-900 hover:underline"
                   >
-                    <svg
-                      className="w-3 h-3 md:w-4 md:h-4 mr-1"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <path
-                        d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"
-                        stroke="currentColor"
-                        strokeWidth="1.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                      <path
-                        d="M12 16V12"
-                        stroke="currentColor"
-                        strokeWidth="1.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                      <path
-                        d="M12 8H12.01"
-                        stroke="currentColor"
-                        strokeWidth="1.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
                     Trợ giúp
                   </a>
                 </div>
@@ -276,15 +307,40 @@ const LoginPage: React.FC = () => {
                 {/* Nút đăng nhập */}
                 <button
                   type="submit"
-                  className={`w-full ${
-                    role === "admin" 
-                      ? "bg-blue-600 hover:bg-blue-700" 
-                      : role === "advisor" 
-                      ? "bg-green-600 hover:bg-green-700" 
-                      : "bg-indigo-600 hover:bg-indigo-700"
-                  } text-white font-medium rounded-lg text-sm md:text-base px-5 py-2.5 md:py-3 text-center transition-colors`}
+                  disabled={isSubmitting}
+                  className={`w-full py-2.5 md:py-3 px-5 text-sm md:text-base font-medium text-white rounded-lg transition-colors ${
+                    isSubmitting
+                      ? "bg-indigo-400"
+                      : "bg-indigo-700 hover:bg-indigo-800"
+                  }`}
                 >
-                  ĐĂNG NHẬP
+                  {isSubmitting ? (
+                    <div className="flex items-center justify-center">
+                      <svg
+                        className="animate-spin -ml-1 mr-2 h-5 w-5 text-white"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        ></circle>
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        ></path>
+                      </svg>
+                      Đang xử lý...
+                    </div>
+                  ) : (
+                    "ĐĂNG NHẬP"
+                  )}
                 </button>
               </form>
             </div>

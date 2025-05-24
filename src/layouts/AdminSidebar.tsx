@@ -11,6 +11,8 @@ import {
   FaBars,
   FaChevronDown,
   FaChevronRight,
+  FaFileExcel,
+  FaEnvelope
 } from "react-icons/fa";
 import { Link } from "react-router-dom";
 
@@ -97,7 +99,7 @@ const AdminSidebar: React.FC<SidebarProps> = ({ sidebarOpen, toggleSidebar }) =>
     <div
       className={`${
         sidebarOpen ? "w-64" : "w-16"
-      } bg-blue-900 text-white flex flex-col transition-all duration-300 ease-in-out`}
+      } bg-indigo-900 text-white flex flex-col transition-all duration-300 ease-in-out`}
     >
       {/* Logo */}
       <div
@@ -173,7 +175,21 @@ const AdminSidebar: React.FC<SidebarProps> = ({ sidebarOpen, toggleSidebar }) =>
             text="Quản lý cảnh báo"
             active={false}
             sidebarOpen={sidebarOpen}
-            to="/admin/warnings"
+            to="/academic-warning"
+          />
+          <MenuItem
+            icon={<FaFileExcel />}
+            text="Quản lý file Excel"
+            active={false}
+            sidebarOpen={sidebarOpen}
+            to="/admin/excel-files"
+          />
+          <MenuItem
+            icon={<FaEnvelope />}
+            text="Gửi email thông báo"
+            active={false}
+            sidebarOpen={sidebarOpen}
+            to="/admin/email-sender"
           />
           <MenuItem
             icon={<FaCog />}

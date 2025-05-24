@@ -177,7 +177,7 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, toggleSidebar }) => {
             text="Hỗ trợ qua giảng viên"
             active={false}
             sidebarOpen={sidebarOpen}
-            to="/chat"
+            to="/advisor-chat"
           />
           <MenuItem
             icon={<FaSignInAlt />}
