@@ -170,13 +170,13 @@ const AdminSidebar: React.FC<SidebarProps> = ({ sidebarOpen, toggleSidebar }) =>
             sidebarOpen={sidebarOpen}
             to="/admin/reports"
           />
-          <MenuItem
+          {/* <MenuItem
             icon={<FaFileAlt />}
             text="Quản lý cảnh báo"
             active={false}
             sidebarOpen={sidebarOpen}
             to="/academic-warning"
-          />
+          /> */}
           <MenuItem
             icon={<FaFileExcel />}
             text="Quản lý file Excel"

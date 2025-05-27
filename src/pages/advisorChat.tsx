@@ -48,6 +48,9 @@ const AdvisorChat: React.FC = () => {
         setLoading(false);
       } catch (error) {
         console.error("Lỗi khi lấy danh sách box chat:", error);
+        // Hiển thị lỗi và vẫn cho phép người dùng tạo box chat mới
+        setChatBoxes([]);
+        setSelectedChatBox(null);
         setLoading(false);
       }
     };

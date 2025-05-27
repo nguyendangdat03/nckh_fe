@@ -22,18 +22,26 @@ axiosInstance.interceptors.request.use((config) => {
 
 export interface ExcelFile {
   name: string;
+  original_name?: string;
   size: string | number;
   lastModified?: Date;
   uploadDate?: string;
   url?: string;
+  semester?: number;
+  year?: number;
+  description?: string;
 }
 
 export interface ExcelData {
   fileName: string;
+  originalName?: string;
   data: any[];
   sheets: string[];
   currentSheet: string;
   totalRows: number;
+  semester?: number;
+  year?: number;
+  description?: string;
 }
 
 export const excelService = {
@@ -45,9 +53,13 @@ export const excelService = {
       const response = await axios.get(`${API_URL}/excel`);
       return response.data.map((file: any) => ({
         name: file.name,
+        original_name: file.original_name,
         size: file.size,
         lastModified: file.lastModified,
-        url: `/excel/${file.name}`
+        url: `/excel/${file.name}`,
+        semester: file.semester,
+        year: file.year,
+        description: file.description
       }));
     } catch (error) {
       console.error("Error fetching Excel files:", error);
@@ -87,10 +99,14 @@ export const excelService = {
       
       return {
         fileName: data.fileName || fileName,
+        originalName: data.originalName,
         data: Array.isArray(data.data) ? data.data : [],
         sheets: data.sheets || ['Sheet1'],
         currentSheet: data.currentSheet || data.sheets?.[0] || 'Sheet1',
-        totalRows: data.totalRows || (Array.isArray(data.data) ? data.data.length : 0)
+        totalRows: data.totalRows || (Array.isArray(data.data) ? data.data.length : 0),
+        semester: data.semester,
+        year: data.year,
+        description: data.description
       };
     } catch (error) {
       console.error(`Error fetching Excel data for file ${fileName}:`, error);
@@ -103,7 +119,7 @@ export const excelService = {
    * @param fileName Tên file Excel
    * @param sheetName Tên sheet (lớp) cần lấy dữ liệu
    */
-  getSheetData: async (fileName: string, sheetName: string): Promise<any[]> => {
+  getSheetData: async (fileName: string, sheetName: string): Promise<{data: any[], fileName: string, originalName?: string, semester?: number, year?: number, description?: string}> => {
     try {
       // Sử dụng query parameter sheetName theo API
       const url = `${API_URL}/excel/${fileName}/sheet?sheetName=${encodeURIComponent(
@@ -115,12 +131,25 @@ export const excelService = {
 
       // Xử lý dữ liệu sheet trả về
       if (response.data && response.data.data && Array.isArray(response.data.data)) {
-        return response.data.data;
+        return {
+          data: response.data.data,
+          fileName: response.data.fileName || fileName,
+          originalName: response.data.originalName,
+          semester: response.data.semester,
+          year: response.data.year,
+          description: response.data.description
+        };
       } else if (response.data && Array.isArray(response.data)) {
-        return response.data;
+        return {
+          data: response.data,
+          fileName: fileName
+        };
       } else {
         console.warn("Response format is unexpected:", response.data);
-        return [];
+        return {
+          data: [],
+          fileName: fileName
+        };
       }
     } catch (error) {
       console.error(
@@ -140,6 +169,24 @@ export const excelService = {
       const formData = new FormData();
       formData.append('file', file);
 
+      const response = await axios.post(`${API_URL}/excel/upload`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error uploading Excel file:', error);
+      throw error;
+    }
+  },
+  
+  /**
+   * Upload file Excel mới với thông tin về kỳ học
+   * @param formData FormData chứa file và các thông tin kỳ học (semester, year, description)
+   */
+  uploadExcelFileWithParams: async (formData: FormData): Promise<any> => {
+    try {
       const response = await axios.post(`${API_URL}/excel/upload`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data'

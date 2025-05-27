@@ -12,6 +12,8 @@ import {
   FaFileImport,
   FaTable,
   FaGraduationCap,
+  FaCalendarAlt,
+  FaInfoCircle,
 } from "react-icons/fa";
 
 const ExcelFilesManager: React.FC = () => {
@@ -26,6 +28,15 @@ const ExcelFilesManager: React.FC = () => {
   const [previewLoading, setPreviewLoading] = useState<boolean>(false);
   const [availableSheets, setAvailableSheets] = useState<string[]>([]);
   const [selectedSheet, setSelectedSheet] = useState<string | null>(null);
+  
+  // Form state cho upload file
+  const [uploadForm, setUploadForm] = useState({
+    semester: 1,
+    year: new Date().getFullYear(),
+    description: ""
+  });
+  const [showUploadForm, setShowUploadForm] = useState<boolean>(false);
+  const [selectedFileToupload, setSelectedFileToUpload] = useState<File | null>(null);
 
   // Lấy danh sách file Excel
   useEffect(() => {
@@ -46,22 +57,60 @@ const ExcelFilesManager: React.FC = () => {
     }
   };
 
-  // Xử lý upload file
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Xử lý chọn file upload
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
     
     const file = e.target.files[0];
+    setSelectedFileToUpload(file);
+    setShowUploadForm(true);
+  };
+  
+  // Xử lý thay đổi trong form upload
+  const handleUploadFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setUploadForm({
+      ...uploadForm,
+      [name]: name === 'semester' || name === 'year' ? parseInt(value) : value
+    });
+  };
+
+  // Xử lý upload file
+  const handleFileUpload = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!selectedFileToupload) {
+      setError("Vui lòng chọn file để tải lên");
+      return;
+    }
     
     try {
       setUploading(true);
       setError(null);
       
-      await excelService.uploadExcelFile(file);
+      const formData = new FormData();
+      formData.append('file', selectedFileToupload);
+      formData.append('semester', uploadForm.semester.toString());
+      formData.append('year', uploadForm.year.toString());
+      
+      if (uploadForm.description) {
+        formData.append('description', uploadForm.description);
+      }
+      
+      await excelService.uploadExcelFileWithParams(formData);
       
       // Refresh danh sách file sau khi upload
       await fetchExcelFiles();
       
-      setSuccessMessage(`File ${file.name} đã được tải lên thành công`);
+      setSuccessMessage(`File ${selectedFileToupload.name} đã được tải lên thành công`);
+      setShowUploadForm(false);
+      setSelectedFileToUpload(null);
+      setUploadForm({
+        semester: 1,
+        year: new Date().getFullYear(),
+        description: ""
+      });
+      
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err) {
       console.error("Error uploading file:", err);
@@ -103,7 +152,7 @@ const ExcelFilesManager: React.FC = () => {
     }
   };
 
-  // Xử lý chọn file
+  // Xử lý chọn file để xem
   const handleSelectFile = async (fileName: string) => {
     try {
       setSelectedFile(fileName);
@@ -113,10 +162,10 @@ const ExcelFilesManager: React.FC = () => {
       
       // Lấy thông tin về các sheets (lớp) trong file
       const excelData = await excelService.getExcelData(fileName);
-      setAvailableSheets(excelData.sheets);
+      setAvailableSheets(excelData.sheets || []);
       
       // Nếu có ít nhất một sheet, chọn sheet đầu tiên
-      if (excelData.sheets.length > 0) {
+      if (excelData.sheets && excelData.sheets.length > 0) {
         setSelectedSheet(excelData.currentSheet || excelData.sheets[0]);
         await loadSheetData(fileName, excelData.currentSheet || excelData.sheets[0]);
       }
@@ -145,7 +194,7 @@ const ExcelFilesManager: React.FC = () => {
       setPreviewLoading(true);
       
       const data = await excelService.getSheetData(fileName, sheetName);
-      setFilePreview(Array.isArray(data) ? data : []);
+      setFilePreview(Array.isArray(data.data) ? data.data : []);
       
       setError(null);
     } catch (err) {
@@ -159,7 +208,9 @@ const ExcelFilesManager: React.FC = () => {
 
   // Lọc file theo tên
   const filteredFiles = files.filter(file => 
-    file.name.toLowerCase().includes(searchTerm.toLowerCase())
+    file.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (file.original_name && file.original_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (file.description && file.description.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   // Format kích thước file
@@ -200,6 +251,11 @@ const ExcelFilesManager: React.FC = () => {
     return importantColumns.filter(col => allColumns.includes(col));
   };
 
+  // Tìm file đang được chọn trong danh sách file để hiển thị thông tin học kỳ
+  const getSelectedFileInfo = () => {
+    return files.find(file => file.name === selectedFile);
+  };
+
   return (
     <AdminLayout>
       <div className="p-6">
@@ -215,12 +271,95 @@ const ExcelFilesManager: React.FC = () => {
                 type="file"
                 accept=".xlsx,.xls"
                 className="hidden"
-                onChange={handleFileUpload}
+                onChange={handleFileSelect}
                 disabled={uploading}
               />
             </label>
           </div>
         </div>
+
+        {/* Form upload file */}
+        {showUploadForm && selectedFileToupload && (
+          <div className="bg-white p-5 rounded-lg shadow-md mb-6">
+            <h2 className="text-lg font-semibold mb-4 flex items-center">
+              <FaFileExcel className="text-green-600 mr-2"/>
+              Tải lên file: {selectedFileToupload.name}
+            </h2>
+            
+            <form onSubmit={handleFileUpload} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Học kỳ <span className="text-red-600">*</span>
+                  </label>
+                  <select 
+                    name="semester"
+                    value={uploadForm.semester}
+                    onChange={handleUploadFormChange}
+                    className="w-full p-2 border rounded-lg focus:outline-none focus:border-indigo-500"
+                    required
+                  >
+                    <option value={1}>Học kỳ 1</option>
+                    <option value={2}>Học kỳ 2</option>
+                    <option value={3}>Học kỳ 3</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Năm học <span className="text-red-600">*</span>
+                  </label>
+                  <input 
+                    type="number" 
+                    name="year"
+                    value={uploadForm.year}
+                    onChange={handleUploadFormChange}
+                    className="w-full p-2 border rounded-lg focus:outline-none focus:border-indigo-500"
+                    min="2000"
+                    max="2100"
+                    required
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Mô tả
+                </label>
+                <textarea 
+                  name="description"
+                  value={uploadForm.description}
+                  onChange={handleUploadFormChange}
+                  className="w-full p-2 border rounded-lg focus:outline-none focus:border-indigo-500"
+                  rows={3}
+                  placeholder="Nhập mô tả về file Excel này (ví dụ: Dữ liệu điểm lớp CNTT K62)"
+                />
+              </div>
+              
+              <div className="flex justify-end space-x-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowUploadForm(false);
+                    setSelectedFileToUpload(null);
+                  }}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100"
+                  disabled={uploading}
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center"
+                  disabled={uploading}
+                >
+                  {uploading ? <FaSpinner className="animate-spin mr-2" /> : <FaUpload className="mr-2" />}
+                  {uploading ? "Đang tải lên..." : "Tải lên"}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
 
         {/* Thông báo lỗi và thành công */}
         {error && (
@@ -262,7 +401,7 @@ const ExcelFilesManager: React.FC = () => {
                     <thead>
                       <tr className="bg-gray-100">
                         <th className="py-2 px-3 text-left">Tên file</th>
-                        <th className="py-2 px-3 text-left">Kích thước</th>
+                        <th className="py-2 px-3 text-left">Kỳ/Năm</th>
                         <th className="py-2 px-3 text-center">Thao tác</th>
                       </tr>
                     </thead>
@@ -278,10 +417,24 @@ const ExcelFilesManager: React.FC = () => {
                               onClick={() => handleSelectFile(file.name)}
                             >
                               <FaFileExcel className="text-green-600 mr-2" />
-                              <span className="truncate max-w-[150px]">{file.name}</span>
+                              <div>
+                                <div className="font-medium truncate max-w-[150px]">
+                                  {file.original_name || file.name}
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                  {formatFileSize(file.size)}
+                                </div>
+                              </div>
                             </div>
                           </td>
-                          <td className="py-3 px-3">{formatFileSize(file.size)}</td>
+                          <td className="py-3 px-3 text-sm">
+                            {file.semester && file.year ? (
+                              <div className="flex items-center">
+                                <FaCalendarAlt className="text-blue-600 mr-1" />
+                                <span>Kỳ {file.semester}/{file.year}</span>
+                              </div>
+                            ) : "-"}
+                          </td>
                           <td className="py-3 px-3">
                             <div className="flex justify-center space-x-2">
                               <button
@@ -336,7 +489,7 @@ const ExcelFilesManager: React.FC = () => {
           <div className="w-full lg:w-2/3 bg-white rounded-lg shadow-md p-4">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-semibold">
-                {selectedFile ? `Xem file: ${selectedFile}` : "Xem dữ liệu file"}
+                {selectedFile ? `Xem file: ${getSelectedFileInfo()?.original_name || selectedFile}` : "Xem dữ liệu file"}
               </h2>
               
               {/* Chọn lớp (sheet) */}
@@ -369,17 +522,57 @@ const ExcelFilesManager: React.FC = () => {
               <div className="overflow-x-auto">
                 {filePreview.length > 0 && Object.keys(filePreview[0] || {}).length > 0 ? (
                   <>
+                    {/* Thông tin file */}
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
                       <div className="flex items-center mb-2">
-                        <FaGraduationCap className="text-blue-600 mr-2" />
-                        <h3 className="text-lg font-medium text-blue-800">Thông tin lớp: {selectedSheet}</h3>
+                        <FaFileExcel className="text-green-600 mr-2" />
+                        <h3 className="text-lg font-medium text-blue-800">
+                          {getSelectedFileInfo()?.original_name || selectedFile}
+                        </h3>
                       </div>
-                      <p className="text-sm text-blue-700">
-                        Tổng số sinh viên: <span className="font-semibold">{filePreview.length - 1}</span> 
-                        {filePreview.length > 1 && filePreview[0]["STT"] === undefined && " (bao gồm hàng tiêu đề)"}
-                      </p>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* Thông tin học kỳ */}
+                        <div className="flex items-start">
+                          <FaCalendarAlt className="text-blue-600 mr-2 mt-1" />
+                          <div>
+                            <p className="font-medium">Học kỳ:</p>
+                            <p>{getSelectedFileInfo()?.semester || "-"}/{getSelectedFileInfo()?.year || "-"}</p>
+                          </div>
+                        </div>
+                        
+                        {/* Mô tả */}
+                        {getSelectedFileInfo()?.description && (
+                          <div className="flex items-start">
+                            <FaInfoCircle className="text-blue-600 mr-2 mt-1" />
+                            <div>
+                              <p className="font-medium">Mô tả:</p>
+                              <p>{getSelectedFileInfo()?.description}</p>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Thông tin lớp */}
+                        <div className="flex items-start">
+                          <FaGraduationCap className="text-blue-600 mr-2 mt-1" />
+                          <div>
+                            <p className="font-medium">Lớp:</p>
+                            <p>{selectedSheet}</p>
+                          </div>
+                        </div>
+                        
+                        {/* Tổng số sinh viên */}
+                        <div className="flex items-start">
+                          <FaTable className="text-blue-600 mr-2 mt-1" />
+                          <div>
+                            <p className="font-medium">Số sinh viên:</p>
+                            <p>{filePreview.length - (filePreview.length > 1 && filePreview[0]["STT"] === undefined ? 1 : 0)}</p>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                     
+                    {/* Bảng dữ liệu */}
                     <table className="min-w-full border">
                       <thead>
                         <tr className="bg-gray-100">
