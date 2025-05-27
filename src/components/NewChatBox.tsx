@@ -65,7 +65,7 @@ const NewChatBox: React.FC = () => {
         studentId = selectedUserId;
       }
       
-      // Tạo chat box mới
+      // Tạo chat box mới - đảm bảo thứ tự tham số đúng: studentId, advisorId
       const chatBox = await chatService.createChatBox(studentId, advisorId);
       
       // Chuyển hướng đến trang chat với box mới được tạo

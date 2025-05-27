@@ -26,18 +26,26 @@ const CreateChatBox: React.FC = () => {
   useEffect(() => {
     const fetchAdvisors = async () => {
       try {
-        const data = await chatService.getAllAdvisors();
+        // Kiểm tra vai trò người dùng để gọi API phù hợp
+        let data;
+        if (currentUser?.role === "advisor") {
+          // Nếu là giảng viên, lấy danh sách sinh viên
+          data = await chatService.getAllStudents();
+        } else {
+          // Nếu là sinh viên, lấy danh sách giảng viên
+          data = await chatService.getAllAdvisors();
+        }
         setAdvisors(data);
       } catch (err) {
-        console.error("Lỗi khi lấy danh sách cố vấn:", err);
-        setError("Không thể tải danh sách cố vấn. Vui lòng thử lại sau.");
+        console.error("Lỗi khi lấy danh sách người dùng:", err);
+        setError("Không thể tải danh sách. Vui lòng thử lại sau.");
       } finally {
         setLoading(false);
       }
     };
 
     fetchAdvisors();
-  }, []);
+  }, [currentUser]);
 
   const handleCreateChat = async (advisorId: number) => {
     try {
@@ -47,16 +55,19 @@ const CreateChatBox: React.FC = () => {
       let chatBox;
       
       if (currentUser?.role === "student") {
-        // Sử dụng API POST /chat/boxes/:id cho sinh viên
+        // Sinh viên tạo chat với giảng viên (advisorId)
         chatBox = await chatService.createChatBoxWithAdvisorId(advisorId);
       } else {
-        // Sử dụng API POST /chat/boxes cho cố vấn
+        // Giảng viên tạo chat với sinh viên
         if (!currentUser?.user_id) {
           throw new Error("Không có thông tin người dùng");
         }
         
-        // Lấy thông tin sinh viên (giả sử advisorId là student_id trong trường hợp này)
-        chatBox = await chatService.createChatBox(advisorId, currentUser.user_id);
+        // Đảm bảo thứ tự tham số đúng: createChatBox(studentId, advisorId)
+        // Ở đây, advisorId thực ra là studentId vì đang xem danh sách sinh viên
+        const studentId = advisorId;
+        const advisorUserId = currentUser.user_id;
+        chatBox = await chatService.createChatBox(studentId, advisorUserId);
       }
       
       // Chuyển hướng đến trang chat với box mới được tạo
@@ -120,7 +131,7 @@ const CreateChatBox: React.FC = () => {
                         <div className="text-xs text-gray-500">Mã: {advisor.student_code}</div>
                       )}
                       <div className="text-xs text-gray-500">
-                        {advisor.role === "advisor" ? "Giảng viên" : "Sinh viên"}
+                        {currentUser.role === "student" ? "Giảng viên" : "Sinh viên"}
                       </div>
                     </div>
                   </div>
