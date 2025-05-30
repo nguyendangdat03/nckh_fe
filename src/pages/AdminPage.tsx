@@ -1,6 +1,6 @@
 import React from "react";
 import AdminLayout from "../layouts/AdminLayout";
-import { FaUsersCog, FaChartBar, FaClipboardList, FaUserGraduate, FaUserTie, FaFileAlt, FaFileExcel } from "react-icons/fa";
+import { FaUsersCog, FaChartBar, FaClipboardList, FaUserGraduate, FaUserTie, FaFileAlt, FaFileExcel, FaSchool } from "react-icons/fa";
 import { Link } from "react-router-dom";
 
 const AdminPage: React.FC = () => {
@@ -14,6 +14,12 @@ const AdminPage: React.FC = () => {
             icon={<FaUsersCog className="w-16 h-16 text-indigo-600" />}
             title="Quản lý người dùng"
             link="/admin/users"
+          />
+          
+          <MenuCard
+            icon={<FaSchool className="w-16 h-16 text-indigo-600" />}
+            title="Quản lý lớp học"
+            link="/admin/classes"
           />
           
           <MenuCard

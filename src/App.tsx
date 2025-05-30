@@ -13,6 +13,9 @@ import CreateChatBox from "./pages/CreateChatBox";
 import StudentCreateChatBox from "./pages/StudentCreateChatBox";
 import ExcelFilesManager from "./pages/admin/ExcelFilesManager";
 import EmailSender from "./pages/admin/EmailSender";
+import UserManager from "./pages/admin/UserManager";
+import ClassManager from "./pages/admin/ClassManager";
+import AdvisorManager from "./pages/admin/AdvisorManager";
 import { BubbleChat } from "flowise-embed-react";
 import { AuthProvider } from "./services/AuthContext";
 import { setupAxiosInterceptors } from "./services/authService";
@@ -87,8 +90,10 @@ function App() {
 
             {/* Trang Admin */}
             <Route path="/admin" element={<ProtectedRoute element={<AdminPage />} allowedRoles={['admin']} />} />
+            <Route path="/admin/users" element={<ProtectedRoute element={<UserManager />} allowedRoles={['admin']} />} />
+            <Route path="/admin/classes" element={<ProtectedRoute element={<ClassManager />} allowedRoles={['admin']} />} />
+            <Route path="/admin/advisors" element={<ProtectedRoute element={<AdvisorManager />} allowedRoles={['admin']} />} />
             <Route path="/admin/students" element={<ProtectedRoute element={<div>Quản lý sinh viên</div>} allowedRoles={['admin']} />} />
-            <Route path="/admin/advisors" element={<ProtectedRoute element={<div>Quản lý cố vấn</div>} allowedRoles={['admin']} />} />
             <Route path="/admin/courses" element={<ProtectedRoute element={<div>Quản lý khóa học</div>} allowedRoles={['admin']} />} />
             <Route path="/admin/reports" element={<ProtectedRoute element={<div>Báo cáo thống kê</div>} allowedRoles={['admin']} />} />
             <Route path="/admin/warnings" element={<ProtectedRoute element={<AcademicWarning />} allowedRoles={['admin']} />} />
