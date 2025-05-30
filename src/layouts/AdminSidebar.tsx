@@ -12,7 +12,9 @@ import {
   FaChevronDown,
   FaChevronRight,
   FaFileExcel,
-  FaEnvelope
+  FaEnvelope,
+  FaUsers,
+  FaSchool
 } from "react-icons/fa";
 import { Link } from "react-router-dom";
 
@@ -145,6 +147,11 @@ const AdminSidebar: React.FC<SidebarProps> = ({ sidebarOpen, toggleSidebar }) =>
           {sidebarOpen && openSubmenus["users"] && (
             <div>
               <SubmenuItem
+                icon={<FaUsers />}
+                text="Tất cả người dùng"
+                to="/admin/users"
+              />
+              <SubmenuItem
                 icon={<FaUserGraduate />}
                 text="Sinh viên"
                 to="/admin/students"
@@ -156,6 +163,13 @@ const AdminSidebar: React.FC<SidebarProps> = ({ sidebarOpen, toggleSidebar }) =>
               />
             </div>
           )}
+          <MenuItem
+            icon={<FaSchool />}
+            text="Quản lý lớp học"
+            active={false}
+            sidebarOpen={sidebarOpen}
+            to="/admin/classes"
+          />
           <MenuItem
             icon={<FaClipboardList />}
             text="Quản lý khóa học"
