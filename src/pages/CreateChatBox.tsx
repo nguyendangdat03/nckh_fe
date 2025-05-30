@@ -27,13 +27,16 @@ const CreateChatBox: React.FC = () => {
     const fetchAdvisors = async () => {
       try {
         // Kiểm tra vai trò người dùng để gọi API phù hợp
-        let data;
+        let data: User[] = [];
         if (currentUser?.role === "advisor") {
           // Nếu là giảng viên, lấy danh sách sinh viên
           data = await chatService.getAllStudents();
-        } else {
+        } else if (currentUser?.role === "student") {
           // Nếu là sinh viên, lấy danh sách giảng viên
           data = await chatService.getAllAdvisors();
+        } else {
+          // Nếu vai trò khác, trả về mảng rỗng
+          setError("Vai trò người dùng không hợp lệ để tạo chat");
         }
         setAdvisors(data);
       } catch (err) {
@@ -57,7 +60,7 @@ const CreateChatBox: React.FC = () => {
       if (currentUser?.role === "student") {
         // Sinh viên tạo chat với giảng viên (advisorId)
         chatBox = await chatService.createChatBoxWithAdvisorId(advisorId);
-      } else {
+      } else if (currentUser?.role === "advisor") {
         // Giảng viên tạo chat với sinh viên
         if (!currentUser?.user_id) {
           throw new Error("Không có thông tin người dùng");
@@ -68,6 +71,8 @@ const CreateChatBox: React.FC = () => {
         const studentId = advisorId;
         const advisorUserId = currentUser.user_id;
         chatBox = await chatService.createChatBox(studentId, advisorUserId);
+      } else {
+        throw new Error("Vai trò người dùng không hợp lệ để tạo chat");
       }
       
       // Chuyển hướng đến trang chat với box mới được tạo

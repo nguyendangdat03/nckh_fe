@@ -44,6 +44,15 @@ export interface ExcelData {
   description?: string;
 }
 
+// Interface cho sinh viên bị cảnh báo học tập
+export interface WarningStudent {
+  student_code: string;
+  student_name: string;
+  class_name: string;
+  gpa: number;
+  reason: string;
+}
+
 export const excelService = {
   /**
    * Lấy danh sách tất cả các file Excel
@@ -119,7 +128,7 @@ export const excelService = {
    * @param fileName Tên file Excel
    * @param sheetName Tên sheet (lớp) cần lấy dữ liệu
    */
-  getSheetData: async (fileName: string, sheetName: string): Promise<{data: any[], fileName: string, originalName?: string, semester?: number, year?: number, description?: string}> => {
+  getSheetData: async (fileName: string, sheetName: string): Promise<any> => {
     try {
       // Sử dụng query parameter sheetName theo API
       const url = `${API_URL}/excel/${fileName}/sheet?sheetName=${encodeURIComponent(
@@ -128,35 +137,33 @@ export const excelService = {
       console.log(`Requesting sheet data from: ${url}`);
 
       const response = await axios.get(url);
+      console.log("Response data structure:", JSON.stringify(response.data).substring(0, 100) + "...");
 
-      // Xử lý dữ liệu sheet trả về
+      // Xử lý dữ liệu sheet trả về với nhiều cấu trúc có thể có
       if (response.data && response.data.data && Array.isArray(response.data.data)) {
-        return {
-          data: response.data.data,
-          fileName: response.data.fileName || fileName,
-          originalName: response.data.originalName,
-          semester: response.data.semester,
-          year: response.data.year,
-          description: response.data.description
-        };
+        return response.data;
       } else if (response.data && Array.isArray(response.data)) {
-        return {
-          data: response.data,
-          fileName: fileName
-        };
+        return response.data;
+      } else if (response.data && typeof response.data === 'object') {
+        // Kiểm tra xem có thuộc tính khác chứa dữ liệu không
+        for (const key of Object.keys(response.data)) {
+          if (Array.isArray(response.data[key])) {
+            return { data: response.data[key] };
+          }
+        }
+        // Nếu không tìm thấy mảng dữ liệu, trả về đối tượng gốc
+        return response.data;
       } else {
         console.warn("Response format is unexpected:", response.data);
-        return {
-          data: [],
-          fileName: fileName
-        };
+        return { data: [] };
       }
     } catch (error) {
       console.error(
         `Error fetching sheet "${sheetName}" from file "${fileName}":`,
         error
       );
-      throw error;
+      // Trả về mảng rỗng thay vì throw error để tránh màn hình trắng
+      return { data: [] };
     }
   },
 
@@ -182,16 +189,224 @@ export const excelService = {
   },
   
   /**
-   * Upload file Excel mới với thông tin về kỳ học
-   * @param formData FormData chứa file và các thông tin kỳ học (semester, year, description)
+   * Gửi email cảnh báo học tập cho sinh viên và cố vấn học tập
+   * @param fileName Tên file Excel
+   * @param sheetName Tên sheet (lớp)
+   * @param semester Học kỳ
+   * @param year Năm học
+   * @param studentTemplate Tên template email cho sinh viên (mặc định: "academic_warning")
+   * @param advisorTemplate Tên template email cho cố vấn (mặc định: "advisor_warning")
    */
-  uploadExcelFileWithParams: async (formData: FormData): Promise<any> => {
+  sendAcademicWarning: async (
+    fileName: string, 
+    sheetName: string, 
+    semester: number, 
+    year: number,
+    studentTemplate: string = "academic_warning", 
+    advisorTemplate: string = "advisor_warning"
+  ): Promise<any> => {
+    try {
+      // Lấy dữ liệu sheet
+      const sheetData = await excelService.getSheetData(fileName, sheetName);
+      console.log("Dữ liệu sheet để kiểm tra cảnh báo:", sheetData);
+
+      // Xử lý dữ liệu từ API
+      let processedData: any[] = [];
+      if (Array.isArray(sheetData)) {
+        processedData = sheetData;
+      } else if (sheetData && typeof sheetData === 'object') {
+        if (sheetData.data && Array.isArray(sheetData.data)) {
+          processedData = sheetData.data;
+        } else if (sheetData.data && sheetData.data.data && Array.isArray(sheetData.data.data)) {
+          processedData = sheetData.data.data;
+        }
+      }
+
+      if (processedData.length === 0) {
+        console.log("Không có dữ liệu trong sheet để kiểm tra cảnh báo");
+        return { success: false, message: "Không có dữ liệu" };
+      }
+
+      // Kiểm tra xem hàng đầu tiên có phải là metadata không
+      const isFirstRowMetadata = processedData.length > 0 && (!processedData[0]["STT"]);
+      const dataRows = isFirstRowMetadata ? processedData.slice(1) : processedData;
+
+      // Lọc sinh viên bị cảnh báo học tập
+      const warningStudents: WarningStudent[] = [];
+      
+      for (const row of dataRows) {
+        // Tìm cột cảnh báo học tập
+        let warningColumn = "";
+        const possibleWarningColumns = [
+          "MỨC CẢNH BÁO HỌC TẬP", 
+          "Cảnh báo học tập", 
+          "CanhBao", 
+          "MỨC CẢNH BÁO HỌC TẬP ĐÃ NHẬN KỲ TRƯỚC", 
+          "Mức cảnh báo",
+          "Canh bao",
+          "CẢNH BÁO"
+        ];
+        
+        for (const col of possibleWarningColumns) {
+          if (row[col] !== undefined) {
+            warningColumn = col;
+            break;
+          }
+        }
+        
+        // Nếu không tìm thấy cột đặc biệt, tìm theo tên chứa "cảnh báo"
+        if (!warningColumn) {
+          for (const key of Object.keys(row)) {
+            if (key.toLowerCase().includes("cảnh báo") || key.toLowerCase().includes("canh bao")) {
+              warningColumn = key;
+              break;
+            }
+          }
+        }
+
+        // Kiểm tra giá trị cảnh báo học tập
+        if (warningColumn && row[warningColumn]) {
+          const warningValue = String(row[warningColumn]).toLowerCase();
+          if (warningValue.includes("cảnh báo") || warningValue.includes("canh bao")) {
+            // Tìm các cột dữ liệu quan trọng
+            let idColumn = "";
+            const possibleIdColumns = ["Mã SV", "MaSV", "MSSV", "Ma SV"];
+            for (const col of possibleIdColumns) {
+              if (row[col] !== undefined) {
+                idColumn = col;
+                break;
+              }
+            }
+            
+            let nameColumn = "";
+            const possibleNameColumns = ["Họ và tên", "HoTen", "Ho va ten", "Họ tên", "HọTên"];
+            for (const col of possibleNameColumns) {
+              if (row[col] !== undefined) {
+                nameColumn = col;
+                break;
+              }
+            }
+            
+            let gpaColumn = "";
+            const possibleGpaColumns = ["Điểm TB tích lũy", "DiemTBTichLuy", "Diem TB tich luy", "ĐiểmTBTíchLũy"];
+            for (const col of possibleGpaColumns) {
+              if (row[col] !== undefined) {
+                gpaColumn = col;
+                break;
+              }
+            }
+            
+            // Xác định lý do cảnh báo
+            let reason = "Không đạt điểm yêu cầu";
+            
+            if (gpaColumn && parseFloat(row[gpaColumn]) < 2.0) {
+              reason = "Điểm trung bình dưới 2.0";
+            }
+            
+            // Thêm sinh viên vào danh sách cảnh báo
+            if (idColumn && nameColumn) {
+              warningStudents.push({
+                student_code: row[idColumn],
+                student_name: row[nameColumn],
+                class_name: sheetName,
+                gpa: gpaColumn ? parseFloat(row[gpaColumn]) : 0,
+                reason: reason
+              });
+            }
+          }
+        }
+      }
+      
+      if (warningStudents.length === 0) {
+        console.log("Không có sinh viên bị cảnh báo học tập");
+        return { success: true, message: "Không có sinh viên bị cảnh báo học tập" };
+      }
+      
+      console.log(`Tìm thấy ${warningStudents.length} sinh viên bị cảnh báo học tập:`, warningStudents);
+      
+      // Gửi dữ liệu lên API để gửi email
+      const payload = {
+        students: warningStudents,
+        semester: semester,
+        year: year,
+        excelFileName: fileName,
+        studentTemplate: studentTemplate,
+        advisorTemplate: advisorTemplate
+      };
+      
+      const token = localStorage.getItem('access_token');
+      const response = await axios.post(`${API_URL}/mail/academic-warning`, payload, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      return {
+        success: true,
+        message: `Đã gửi email cảnh báo học tập cho ${warningStudents.length} sinh viên`,
+        data: response.data
+      };
+      
+    } catch (error) {
+      console.error('Error sending academic warning emails:', error);
+      return {
+        success: false,
+        message: 'Không thể gửi email cảnh báo học tập',
+        error
+      };
+    }
+  },
+  
+  /**
+   * Upload file Excel mới với thông tin về kỳ học và gửi cảnh báo học tập nếu cần
+   * @param formData FormData chứa file và các thông tin kỳ học (semester, year, description)
+   * @param sendWarnings Có gửi cảnh báo học tập hay không
+   * @param studentTemplate Tên template email cho sinh viên (mặc định: "academic_warning")
+   * @param advisorTemplate Tên template email cho cố vấn (mặc định: "advisor_warning")
+   */
+  uploadExcelFileWithParamsAndWarning: async (
+    formData: FormData, 
+    sendWarnings: boolean = true,
+    studentTemplate: string = "academic_warning",
+    advisorTemplate: string = "advisor_warning"
+  ): Promise<any> => {
     try {
       const response = await axios.post(`${API_URL}/excel/upload`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
       });
+
+      // Nếu cần gửi cảnh báo học tập và upload thành công
+      if (sendWarnings && response.data && response.data.fileName) {
+        const fileName = response.data.fileName;
+        const semester = parseInt(formData.get('semester') as string) || 1;
+        const year = parseInt(formData.get('year') as string) || new Date().getFullYear();
+        
+        // Lấy thông tin về các sheet trong file
+        const excelInfo = await excelService.getExcelInfo(fileName);
+        
+        // Gửi cảnh báo cho từng sheet (lớp)
+        const warningResults = [];
+        for (const sheet of excelInfo.sheets) {
+          const warningResult = await excelService.sendAcademicWarning(
+            fileName,
+            sheet,
+            semester,
+            year,
+            studentTemplate,
+            advisorTemplate
+          );
+          warningResults.push({ sheet, result: warningResult });
+        }
+        
+        return {
+          ...response.data,
+          warningResults
+        };
+      }
+      
       return response.data;
     } catch (error) {
       console.error('Error uploading Excel file:', error);
@@ -226,7 +441,25 @@ export const excelService = {
       console.error(`Error deleting Excel file ${fileName}:`, error);
       throw error;
     }
-  }
+  },
+
+  /**
+   * Upload file Excel mới với thông tin về kỳ học
+   * @param formData FormData chứa file và các thông tin kỳ học (semester, year, description)
+   */
+  uploadExcelFileWithParams: async (formData: FormData): Promise<any> => {
+    try {
+      const response = await axios.post(`${API_URL}/excel/upload`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error uploading Excel file:', error);
+      throw error;
+    }
+  },
 };
 
 export default excelService;
